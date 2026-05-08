@@ -1,7 +1,7 @@
 export default {
   async fetch(request) {
 
-    const SOURCE = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/playlist.m3u";
+    const SOURCE = "https://raw.githubusercontent.com/srhady/crichd-speical-live-event/refs/heads/main/playlist.m3u";
 
     const response = await fetch(SOURCE);
 
