@@ -15,24 +15,24 @@ export default {
       const response = await fetch(SOURCE);
 
       if (!response.ok) {
-        return new Response("Source playlist not found", {
+        return new Response("Failed to fetch source", {
           status: 502
         });
       }
 
-      const text = await response.text();
+      let text = await response.text();
 
-      // FIX BROKEN PLAYLIST FORMAT
-      const normalized = text
+      // FIX PLAYLIST FORMAT
+      text = text
         .replace(/#EXTM3U/g, "\n#EXTM3U")
-        .replace(/#EXTINF/g, "\n#EXTINF")
-        .replace(/#EXTVLCOPT/g, "\n#EXTVLCOPT")
-        .replace(/https?:\/\//g, "\n$&")
+        .replace(/#EXTINF:/g, "\n#EXTINF:")
+        .replace(/#EXTVLCOPT:/g, "\n#EXTVLCOPT:")
+        .replace(/(https?:\/\/[^\s#]+)/g, "\n$1")
         .replace(/# ---/g, "\n# ---");
 
-      const lines = normalized
+      const lines = text
         .split(/\r?\n/)
-        .map(line => line.trim())
+        .map(v => v.trim())
         .filter(Boolean);
 
       const output = [];
@@ -49,22 +49,16 @@ export default {
       output.push(`#LAST-UPDATED: ${now}`);
       output.push("");
 
-      // কোন group-title রাখতে চাও
-      const allowedGroups = [
-        "Live Cricket",
-        "Live Football",
-        "Live Sports"
-      ];
-
       for (let i = 0; i < lines.length; i++) {
 
         const line = lines[i];
 
-        // FILTER LIVE EVENTS
         if (
           line.startsWith("#EXTINF") &&
-          allowedGroups.some(group =>
-            line.includes(`group-title="${group}"`)
+          (
+            line.includes('group-title="Live Cricket"') ||
+            line.includes('group-title="Live Football"') ||
+            line.includes('group-title="Live Sports"')
           )
         ) {
 
@@ -72,6 +66,7 @@ export default {
 
           let j = i + 1;
 
+          // ADD RELATED LINES
           while (
             j < lines.length &&
             !lines[j].startsWith("#EXTINF")
@@ -95,10 +90,10 @@ export default {
         }
       });
 
-    } catch (err) {
+    } catch (e) {
 
       return new Response(
-        "Error: " + err.message,
+        "Error: " + e.message,
         { status: 500 }
       );
 
