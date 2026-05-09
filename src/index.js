@@ -44,14 +44,6 @@ export default {
       output.push(`#LAST-UPDATED: ${now}`);
       output.push("");
 
-      // QUERY:
-      // /playlist.m3u?type=live
-      // /playlist.m3u?type=channels
-
-      const type =
-        (url.searchParams.get("type") || "live")
-        .toLowerCase();
-
       for (let i = 0; i < lines.length; i++) {
 
         const line = lines[i];
@@ -62,6 +54,7 @@ export default {
 
         const lower = line.toLowerCase();
 
+        // ONLY LIVE SPORTS
         const isLive =
           lower.includes('group-title="live') ||
           lower.includes("vs") ||
@@ -69,18 +62,16 @@ export default {
           lower.includes("ipl") ||
           lower.includes("bpl") ||
           lower.includes("psl") ||
+          lower.includes("cpl") ||
           lower.includes("t20") ||
           lower.includes("odi") ||
-          lower.includes("football");
+          lower.includes("test") ||
+          lower.includes("football") ||
+          lower.includes("uefa") ||
+          lower.includes("laliga") ||
+          lower.includes("epl");
 
-        const is247 =
-          lower.includes('group-title="crichd 24/7"');
-
-        // FILTER
-        if (
-          (type === "live" && !isLive) ||
-          (type === "channels" && !is247)
-        ) {
+        if (!isLive) {
           continue;
         }
 
@@ -95,10 +86,8 @@ export default {
 
           const current = lines[j];
 
-          // REMOVE DUPLICATE LINKS
-          if (
-            current.startsWith("http")
-          ) {
+          // REMOVE DUPLICATE STREAMS
+          if (current.startsWith("http")) {
 
             if (seen.has(current)) {
               j++;
@@ -123,7 +112,7 @@ export default {
       output.splice(
         1,
         0,
-        `#TOTAL-CHANNELS: ${total}`
+        `#TOTAL-LIVE-CHANNELS: ${total}`
       );
 
       return new Response(
