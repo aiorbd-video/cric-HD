@@ -4,7 +4,9 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname !== "/playlist.m3u") {
-      return new Response("Not Found", { status: 404 });
+      return new Response("Not Found", {
+        status: 404
+      });
     }
 
     const SOURCE =
@@ -15,27 +17,20 @@ export default {
       const response = await fetch(SOURCE);
 
       if (!response.ok) {
-        return new Response("Failed to fetch source", {
+        return new Response("Source fetch failed", {
           status: 502
         });
       }
 
-      let text = await response.text();
+      const text = await response.text();
 
-      // FIX PLAYLIST FORMAT
-      text = text
-        .replace(/#EXTM3U/g, "\n#EXTM3U")
-        .replace(/#EXTINF:/g, "\n#EXTINF:")
-        .replace(/#EXTVLCOPT:/g, "\n#EXTVLCOPT:")
-        .replace(/(https?:\/\/[^\s#]+)/g, "\n$1")
-        .replace(/# ---/g, "\n# ---");
-
-      const lines = text
-        .split(/\r?\n/)
-        .map(v => v.trim())
-        .filter(Boolean);
+      const lines = text.split("\n");
 
       const output = [];
+
+      const seen = new Set();
+
+      let total = 0;
 
       const now = new Date().toLocaleString("en-BD", {
         timeZone: "Asia/Dhaka",
@@ -49,52 +44,107 @@ export default {
       output.push(`#LAST-UPDATED: ${now}`);
       output.push("");
 
+      // QUERY:
+      // /playlist.m3u?type=live
+      // /playlist.m3u?type=channels
+
+      const type =
+        (url.searchParams.get("type") || "live")
+        .toLowerCase();
+
       for (let i = 0; i < lines.length; i++) {
 
         const line = lines[i];
 
+        if (!line.startsWith("#EXTINF")) {
+          continue;
+        }
+
+        const lower = line.toLowerCase();
+
+        const isLive =
+          lower.includes('group-title="live') ||
+          lower.includes("vs") ||
+          lower.includes("live") ||
+          lower.includes("ipl") ||
+          lower.includes("bpl") ||
+          lower.includes("psl") ||
+          lower.includes("t20") ||
+          lower.includes("odi") ||
+          lower.includes("football");
+
+        const is247 =
+          lower.includes('group-title="crichd 24/7"');
+
+        // FILTER
         if (
-          line.startsWith("#EXTINF") &&
-          (
-            line.includes('group-title="Live Cricket"') ||
-            line.includes('group-title="Live Football"') ||
-            line.includes('group-title="Live Sports"')
-          )
+          (type === "live" && !isLive) ||
+          (type === "channels" && !is247)
+        ) {
+          continue;
+        }
+
+        output.push(line);
+
+        let j = i + 1;
+
+        while (
+          j < lines.length &&
+          !lines[j].startsWith("#EXTINF")
         ) {
 
-          output.push(line);
+          const current = lines[j];
 
-          let j = i + 1;
-
-          // ADD RELATED LINES
-          while (
-            j < lines.length &&
-            !lines[j].startsWith("#EXTINF")
+          // REMOVE DUPLICATE LINKS
+          if (
+            current.startsWith("http")
           ) {
 
-            output.push(lines[j]);
-            j++;
+            if (seen.has(current)) {
+              j++;
+              continue;
+            }
+
+            seen.add(current);
           }
 
-          output.push("");
+          output.push(current);
 
-          i = j - 1;
+          j++;
         }
+
+        output.push("");
+
+        total++;
+
+        i = j - 1;
       }
 
-      return new Response(output.join("\n"), {
-        headers: {
-          "content-type": "application/x-mpegURL; charset=utf-8",
-          "Cache-Control": "no-store",
-          "Access-Control-Allow-Origin": "*"
-        }
-      });
-
-    } catch (e) {
+      output.splice(
+        1,
+        0,
+        `#TOTAL-CHANNELS: ${total}`
+      );
 
       return new Response(
-        "Error: " + e.message,
-        { status: 500 }
+        output.join("\n"),
+        {
+          headers: {
+            "content-type":
+              "application/x-mpegURL; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Access-Control-Allow-Origin": "*"
+          }
+        }
+      );
+
+    } catch (err) {
+
+      return new Response(
+        "Error: " + err.message,
+        {
+          status: 500
+        }
       );
 
     }
