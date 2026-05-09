@@ -54,24 +54,11 @@ export default {
 
         const lower = line.toLowerCase();
 
-        // ONLY LIVE SPORTS
-        const isLive =
-          lower.includes('group-title="live') ||
-          lower.includes("vs") ||
-          lower.includes("live") ||
-          lower.includes("ipl") ||
-          lower.includes("bpl") ||
-          lower.includes("psl") ||
-          lower.includes("cpl") ||
-          lower.includes("t20") ||
-          lower.includes("odi") ||
-          lower.includes("test") ||
-          lower.includes("football") ||
-          lower.includes("uefa") ||
-          lower.includes("laliga") ||
-          lower.includes("epl");
+        // ONLY LIVE CATEGORY
+        const isLiveCategory =
+          lower.includes('group-title="live');
 
-        if (!isLive) {
+        if (!isLiveCategory) {
           continue;
         }
 
@@ -86,7 +73,7 @@ export default {
 
           const current = lines[j];
 
-          // REMOVE DUPLICATE STREAMS
+          // REMOVE DUPLICATE LINKS
           if (current.startsWith("http")) {
 
             if (seen.has(current)) {
